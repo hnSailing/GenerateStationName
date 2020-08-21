@@ -1,27 +1,30 @@
 import requests
 import time
-from config import stationMap
+from config import station_list
 from bs4 import BeautifulSoup
+from chardet import detect
 
-url = "https://airportcode.51240.com/"
+url = "https://airport.supfree.net/search.asp?air=%s"
 
-suffix = "__airportcodesou/"
 
 def get_html(url):
     response = requests.get(url)
-    return response.text
+    response.encoding = "gbk"
+    return response.content
+
 
 def analyze_html(html, code):
     soup = BeautifulSoup(html, "lxml")
-    trs = soup.find_all("tr")
-    if len(trs) < 3:
-        return None, None
+    ctable = soup.find_all("table")
+    #print(ctable)
+    trs = ctable[0].find_all("tr")
     for tr in trs:
-        td = tr.find_all('td')
-        if td[1].string == code:
-            #print(td[1].string, td[3].string)
-            return td[1].string, td[3].string
-    return None,None
+        tds = tr.find_all("td")
+        if tds[1].string == code:
+            name = tds[3].string
+            return tds[1].string, name
+
+    return None, None
 
 
 def store_text(code, name):
@@ -32,12 +35,15 @@ def store_err_text(code):
     with open('error.txt', 'a') as f:
         f.write("%s 三字码对应机场名未找到\n"%(code))
 
-for v in stationMap.values():
+for i in station_list:
+    v = i["code"]
     print("正在进行 %s 三字码对应机场查询..."%(v))
-    spec_url = url + v + suffix
+    spec_url = url%(v)
     #print(spec_url)
     html = get_html(spec_url)
+    #print(html)
     code, name = analyze_html(html, v)
+    #print(code, name)
     #print(code, name)
     if code and name:
         print("三字码: %s 对应机场为: %s"%(code, name))
@@ -45,4 +51,4 @@ for v in stationMap.values():
     else:
         print("三字码: %s 对应信息没找到"%(v))
         store_err_text(v)
-    time.sleep(2)
+    time.sleep(0.5)
